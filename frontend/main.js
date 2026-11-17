@@ -135,3 +135,157 @@ $("#logoutBtn").on("click", function () {
 
 $(window).on("hashchange", route);
 $(route);
+
+function passwordScore(password) {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  return score;
+}
+
+function showSignupError(message) {
+  $("#signupError").text(message).removeClass("hidden");
+}
+
+$("#signup-password").on("input", function () {
+  const score = passwordScore($(this).val());
+  const levels = [
+    { text: "", color: "bg-gray-200" },
+    { text: "Very weak", color: "bg-red-600" },
+    { text: "Weak", color: "bg-orange-600" },
+    { text: "Fair", color: "bg-yellow-600" },
+    { text: "Good", color: "bg-blue-600" },
+    { text: "Strong", color: "bg-green-700" },
+  ];
+  $("#strengthBar")
+    .attr("class", "h-2 rounded " + levels[score].color)
+    .css("width", (score / 5) * 100 + "%");
+  $("#strengthText").text(levels[score].text);
+});
+
+$("#signupForm").on("submit", function (e) {
+  e.preventDefault();
+  $("#signupError").addClass("hidden");
+
+  const full_name = $("#signup-name").val().trim();
+  const email = $("#signup-email").val().trim();
+  const password = $("#signup-password").val();
+  const confirm = $("#signup-confirm").val();
+
+  if (!full_name) return showSignupError("Full name is required.");
+  if (!/^\S+@\S+\.\S+$/.test(email)) return showSignupError("Enter a valid email.");
+  if (passwordScore(password) < 5) return showSignupError("Password is too weak. Follow the rules under the meter.");
+  if (password !== confirm) return showSignupError("Passwords do not match.");
+
+  $("#signupBtn").prop("disabled", true).text("Creating account...");
+
+  apiRequest("POST", "/auth/signup", { full_name: full_name, email: email, password: password })
+    .done(function () {
+      $("#signupForm")[0].reset();
+      $("#strengthBar").css("width", "0");
+      $("#strengthText").text("");
+      goTo("login");
+      showToast("Account created! Please log in.");
+    })
+    .fail(function (xhr) {
+      showSignupError(getErrorMessage(xhr));
+    })
+    .always(function () {
+      $("#signupBtn").prop("disabled", false).text("Sign up");
+    });
+});
+function passwordScore(password) {
+  let score = 0;
+  if (password.length >= 8) score++;
+  if (/[a-z]/.test(password)) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  if (/[^A-Za-z0-9]/.test(password)) score++;
+  return score;
+}
+
+function showSignupError(message) {
+  $("#signupError").text(message).removeClass("hidden");
+}
+
+$("#signup-password").on("input", function () {
+  const score = passwordScore($(this).val());
+  const levels = [
+    { text: "", color: "bg-gray-200" },
+    { text: "Very weak", color: "bg-red-600" },
+    { text: "Weak", color: "bg-orange-600" },
+    { text: "Fair", color: "bg-yellow-600" },
+    { text: "Good", color: "bg-blue-600" },
+    { text: "Strong", color: "bg-green-700" },
+  ];
+  $("#strengthBar")
+    .attr("class", "h-2 rounded " + levels[score].color)
+    .css("width", (score / 5) * 100 + "%");
+  $("#strengthText").text(levels[score].text);
+});
+
+$("#signupForm").on("submit", function (e) {
+  e.preventDefault();
+  $("#signupError").addClass("hidden");
+
+  const full_name = $("#signup-name").val().trim();
+  const email = $("#signup-email").val().trim();
+  const password = $("#signup-password").val();
+  const confirm = $("#signup-confirm").val();
+
+  if (!full_name) return showSignupError("Full name is required.");
+  if (!/^\S+@\S+\.\S+$/.test(email)) return showSignupError("Enter a valid email.");
+  if (passwordScore(password) < 5) return showSignupError("Password is too weak. Follow the rules under the meter.");
+  if (password !== confirm) return showSignupError("Passwords do not match.");
+
+  $("#signupBtn").prop("disabled", true).text("Creating account...");
+
+  apiRequest("POST", "/auth/signup", { full_name: full_name, email: email, password: password })
+    .done(function () {
+      $("#signupForm")[0].reset();
+      $("#strengthBar").css("width", "0");
+      $("#strengthText").text("");
+      goTo("login");
+      showToast("Account created! Please log in.");
+    })
+    .fail(function (xhr) {
+      showSignupError(getErrorMessage(xhr));
+    })
+    .always(function () {
+      $("#signupBtn").prop("disabled", false).text("Sign up");
+    });
+});
+function showLoginError(message) {
+  $("#loginError").text(message).removeClass("hidden");
+}
+
+$("#loginForm").on("submit", function (e) {
+  e.preventDefault();
+  $("#loginError").addClass("hidden");
+
+  const email = $("#login-email").val().trim();
+  const password = $("#login-password").val();
+  if (!email || !password) return showLoginError("Email and password are required.");
+
+  $("#loginBtn").prop("disabled", true).text("Logging in...");
+
+  apiRequest("POST", "/auth/login", { email: email, password: password })
+    .done(function (res) {
+      const data = res.data || res;
+      if (!data.token || !data.user) {
+        return showLoginError("Login worked but the response has no token or user.");
+      }
+      saveSession(data.token, data.user, $("#remember").is(":checked"));
+      $("#loginForm")[0].reset();
+      goTo("events");
+    })
+    .fail(function (xhr) {
+      showLoginError(getErrorMessage(xhr));
+    })
+    .always(function () {
+      $("#loginBtn").prop("disabled", false).text("Log in");
+    });
+});
