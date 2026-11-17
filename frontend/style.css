@@ -1,0 +1,7 @@
+.page { display: none;}
+.page.active { display: block;}
+
+a:focus, button:focus, input:focus, select:focus, textarea:focus {
+    outline: 3px solid #1d4ed8;
+    outline-offset: 2px;
+}
