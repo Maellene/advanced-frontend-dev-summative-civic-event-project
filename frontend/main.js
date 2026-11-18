@@ -1,8 +1,16 @@
 const BASE_URL = "http://localhost:4000";
 const API_URL = BASE_URL + "/api";
 
+const pageLoaders = {};
+
+// ROLE-BASED ACCESS GUARDS: these only improve the user experience.
+// The backend does the real security.
+const PUBLIC_PAGES = ["login", "signup"];
+const ADMIN_PAGES = [];
+
 // Remember me ticked: localStorage (kept after closing the browser).
 // Not ticked: sessionStorage (cleared when the tab closes).
+// Security trade-off: localStorage can be read by any script on the page (XSS risk).
 function saveSession(token, user, remember) {
   clearSession();
   const store = remember ? localStorage : sessionStorage;
@@ -50,7 +58,7 @@ function showToast(message, type) {
   }, 4000);
 }
 
-function apiRequest(method, path, data, isFile) {
+function apiRequest(method, path, data, isFile, onProgress) {
   const options = { url: API_URL + path, method: method, headers: {} };
 
   const token = getToken();
@@ -67,6 +75,16 @@ function apiRequest(method, path, data, isFile) {
       options.data = JSON.stringify(data);
       options.contentType = "application/json";
     }
+  }
+
+  if (onProgress) {
+    options.xhr = function () {
+      const xhr = $.ajaxSettings.xhr();
+      xhr.upload.addEventListener("progress", function (e) {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      });
+      return xhr;
+    };
   }
 
   return $.ajax(options).fail(function (xhr) {
@@ -88,15 +106,77 @@ function getErrorMessage(xhr) {
   return "Something went wrong (error " + xhr.status + ").";
 }
 
-// ROLE-BASED ACCESS GUARDS: these only improve the user experience.
-// The backend does the real security.
-const PUBLIC_PAGES = ["login", "signup"];
-const ADMIN_PAGES = [];
+function esc(text) {
+  return String(text == null ? "" : text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
-// Guard 3: removes admin-only buttons for normal users and user-only buttons for admins.
+function shortText(text, max) {
+  text = String(text || "");
+  return text.length > max ? text.slice(0, max).trim() + "..." : text;
+}
+
+function formatDate(value) {
+  const d = new Date(value);
+  return isNaN(d) ? "" : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
+function toLocalInput(value) {
+  const d = new Date(value);
+  if (isNaN(d)) return "";
+  function pad(n) { return String(n).padStart(2, "0"); }
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+    "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+
+function getList(res) {
+  if (Array.isArray(res)) return res;
+  if (!res) return [];
+  const inner = res.data || [];
+  return Array.isArray(inner) ? inner : [];
+}
+
+function getItem(res) {
+  return (res && res.data) || res;
+}
+
+function skeleton(count) {
+  let html = "";
+  for (let i = 0; i < count; i++) {
+    html += '<div class="bg-white rounded shadow p-4 animate-pulse">' +
+      '<div class="h-32 bg-gray-200 rounded mb-3"></div>' +
+      '<div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>' +
+      '<div class="h-4 bg-gray-200 rounded w-1/2"></div></div>';
+  }
+  return html;
+}
+
+function errorBox(message) {
+  return '<div class="col-span-full bg-red-50 text-red-800 p-4 rounded" role="alert">' +
+    "<p>" + esc(message) + "</p>" +
+    '<button type="button" class="retry mt-2 bg-blue-700 text-white px-3 py-1.5 rounded">Retry</button></div>';
+}
+
+function checkFile(file, extensions, maxMB) {
+  if (!file) return "";
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (extensions.indexOf(ext) === -1) return "Allowed file types: " + extensions.join(", ") + ".";
+  if (file.size > maxMB * 1024 * 1024) return "The file is too big. The maximum size is " + maxMB + " MB.";
+  return "";
+}
+
+function showUploadProgress(percent) {
+  $(".page.active .upload-bar").css("width", percent + "%");
+  $(".page.active .upload-text").text("Uploading " + percent + "%");
+}
+
+// Guard 3: hides admin-only buttons from normal users and user-only buttons from admins.
 function applyRoleVisibility() {
-  if (!isAdmin()) $(".admin-only").remove();
-  if (isAdmin()) $(".user-only").remove();
+  $(".admin-only").toggleClass("hidden", !isAdmin());
+  $(".user-only").toggleClass("hidden", isAdmin());
 }
 
 function goTo(page) {
@@ -104,7 +184,9 @@ function goTo(page) {
 }
 
 function route() {
-  const page = location.hash.replace("#/", "") || (getToken() ? "events" : "login");
+  const parts = location.hash.replace("#/", "").split("/");
+  const page = parts[0] || (getToken() ? "events" : "login");
+  const id = parts[1];
   const isPublic = PUBLIC_PAGES.indexOf(page) !== -1;
 
   // Guard 1: every screen except login and signup needs a logged-in user.
@@ -121,20 +203,35 @@ function route() {
 
   $(".page").removeClass("active");
   $("#page-" + page).addClass("active");
+  $("#navbar, #footer").toggleClass("hidden", isPublic);
+  $("#profileName").text(isPublic ? "" : getUser().full_name);
   applyRoleVisibility();
+  window.scrollTo(0, 0);
 
-  if (page === "events") {
-    const user = getUser();
-    $("#welcome").text("Logged in as " + user.full_name + " (" + user.role + ")");
-  }
+  if (pageLoaders[page]) pageLoaders[page](id);
 }
 
 $("#logoutBtn").on("click", function () {
+  $("#profileMenu").addClass("hidden");
   logout("You have been logged out.");
 });
 
-$(window).on("hashchange", route);
-$(route);
+$("#profileBtn").on("click", function (e) {
+  e.stopPropagation();
+  const closed = $("#profileMenu").toggleClass("hidden").hasClass("hidden");
+  $(this).attr("aria-expanded", !closed);
+});
+
+$(document).on("click", function () {
+  $("#profileMenu").addClass("hidden");
+  $("#profileBtn").attr("aria-expanded", "false");
+});
+
+$(document).on("keydown", function (e) {
+  if (e.key === "Escape") $("#profileMenu").addClass("hidden");
+});
+
+$(document).on("click", ".retry", route);
 
 function passwordScore(password) {
   let score = 0;
@@ -197,67 +294,7 @@ $("#signupForm").on("submit", function (e) {
       $("#signupBtn").prop("disabled", false).text("Sign up");
     });
 });
-function passwordScore(password) {
-  let score = 0;
-  if (password.length >= 8) score++;
-  if (/[a-z]/.test(password)) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-  return score;
-}
 
-function showSignupError(message) {
-  $("#signupError").text(message).removeClass("hidden");
-}
-
-$("#signup-password").on("input", function () {
-  const score = passwordScore($(this).val());
-  const levels = [
-    { text: "", color: "bg-gray-200" },
-    { text: "Very weak", color: "bg-red-600" },
-    { text: "Weak", color: "bg-orange-600" },
-    { text: "Fair", color: "bg-yellow-600" },
-    { text: "Good", color: "bg-blue-600" },
-    { text: "Strong", color: "bg-green-700" },
-  ];
-  $("#strengthBar")
-    .attr("class", "h-2 rounded " + levels[score].color)
-    .css("width", (score / 5) * 100 + "%");
-  $("#strengthText").text(levels[score].text);
-});
-
-$("#signupForm").on("submit", function (e) {
-  e.preventDefault();
-  $("#signupError").addClass("hidden");
-
-  const full_name = $("#signup-name").val().trim();
-  const email = $("#signup-email").val().trim();
-  const password = $("#signup-password").val();
-  const confirm = $("#signup-confirm").val();
-
-  if (!full_name) return showSignupError("Full name is required.");
-  if (!/^\S+@\S+\.\S+$/.test(email)) return showSignupError("Enter a valid email.");
-  if (passwordScore(password) < 5) return showSignupError("Password is too weak. Follow the rules under the meter.");
-  if (password !== confirm) return showSignupError("Passwords do not match.");
-
-  $("#signupBtn").prop("disabled", true).text("Creating account...");
-
-  apiRequest("POST", "/auth/signup", { full_name: full_name, email: email, password: password })
-    .done(function () {
-      $("#signupForm")[0].reset();
-      $("#strengthBar").css("width", "0");
-      $("#strengthText").text("");
-      goTo("login");
-      showToast("Account created! Please log in.");
-    })
-    .fail(function (xhr) {
-      showSignupError(getErrorMessage(xhr));
-    })
-    .always(function () {
-      $("#signupBtn").prop("disabled", false).text("Sign up");
-    });
-});
 function showLoginError(message) {
   $("#loginError").text(message).removeClass("hidden");
 }
@@ -289,3 +326,6 @@ $("#loginForm").on("submit", function (e) {
       $("#loginBtn").prop("disabled", false).text("Log in");
     });
 });
+
+$(window).on("hashchange", route);
+$(route);

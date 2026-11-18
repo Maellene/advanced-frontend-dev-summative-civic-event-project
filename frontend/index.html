@@ -3,15 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CivicEvents</title>
+  <title>CivicEvents+</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css" />
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
 
-  <main id="app" class="max-w-6xl mx-auto p-4">
-        <section id="page-login" class="page max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
+  <header id="navbar" class="hidden bg-blue-800 text-white">
+    <nav class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3" aria-label="Main navigation">
+      <a href="#/events" class="text-xl font-bold">CivicEvents+</a>
+
+      <form id="searchForm" role="search" class="flex-1 min-w-[160px] max-w-sm">
+        <label for="global-search" class="sr-only">Search events</label>
+        <input id="global-search" type="search" placeholder="Search events..." class="w-full rounded px-3 py-1.5 text-gray-900" />
+      </form>
+
+      <a href="#/events" class="px-2 py-1 hover:underline">Events</a>
+
+      <div class="relative ml-auto">
+        <button id="profileBtn" type="button" aria-haspopup="true" aria-expanded="false" class="px-2 py-1 rounded hover:bg-blue-700">
+          <span id="profileName"></span> <span aria-hidden="true">&#9662;</span>
+        </button>
+        <div id="profileMenu" class="hidden absolute right-0 mt-2 w-44 bg-white text-gray-900 rounded shadow-lg z-40">
+          <button id="logoutBtn" type="button" class="block w-full text-left px-4 py-2 hover:bg-gray-100">Log out</button>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main id="app" class="flex-1 w-full max-w-6xl mx-auto p-4">
+
+    <section id="page-login" class="page max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
       <h1 class="text-2xl font-bold mb-4">Log in</h1>
       <p id="loginError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
 
@@ -32,7 +55,7 @@
       <p class="mt-4 text-sm">No account? <a href="#/signup" class="text-blue-700 underline">Sign up</a></p>
     </section>
 
-        <section id="page-signup" class="page max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
+    <section id="page-signup" class="page max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
       <h1 class="text-2xl font-bold mb-4">Create an account</h1>
       <p id="signupError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
 
@@ -62,13 +85,91 @@
     </section>
 
     <section id="page-events" class="page">
-      <h1 class="text-2xl font-bold mb-2">Events</h1>
-      <p id="welcome" class="mb-4"></p>
-      <button id="logoutBtn" type="button" class="bg-gray-800 text-white px-3 py-1.5 rounded">Log out</button>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h1 class="text-2xl font-bold">Events</h1>
+        <a href="#/event-form" class="admin-only bg-blue-700 text-white px-3 py-1.5 rounded hover:bg-blue-800">Create event</a>
+      </div>
+
+      <form id="filterForm" class="grid gap-3 sm:grid-cols-4 mb-4 bg-white p-3 rounded shadow">
+        <div>
+          <label for="filter-search" class="block text-sm font-medium">Search</label>
+          <input id="filter-search" type="text" class="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label for="filter-location" class="block text-sm font-medium">Location</label>
+          <input id="filter-location" type="text" class="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label for="filter-date" class="block text-sm font-medium">From date</label>
+          <input id="filter-date" type="date" class="w-full border rounded p-2" />
+        </div>
+        <div class="flex items-end">
+          <button type="button" id="clearFilters" class="bg-gray-200 px-3 py-2 rounded hover:bg-gray-300">Clear filters</button>
+        </div>
+      </form>
+
+      <div id="eventList" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+      <nav id="eventPager" class="flex flex-wrap gap-2 justify-center mt-6" aria-label="Events pages"></nav>
+    </section>
+
+    <section id="page-event" class="page">
+      <a href="#/events" class="text-blue-700 underline">&larr; Back to events</a>
+      <div id="eventDetail" class="mt-4"></div>
+    </section>
+
+    <section id="page-event-form" class="page max-w-2xl mx-auto bg-white p-6 rounded shadow">
+      <h1 id="eventFormTitle" class="text-2xl font-bold mb-4">Create event</h1>
+      <p id="eventFormError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
+
+      <form id="eventForm" novalidate>
+        <label for="ef-title" class="block font-medium">Title</label>
+        <input id="ef-title" type="text" class="w-full border rounded p-2 mb-3" />
+
+        <label for="ef-description" class="block font-medium">Description</label>
+        <textarea id="ef-description" rows="4" class="w-full border rounded p-2 mb-3"></textarea>
+
+        <label for="ef-location" class="block font-medium">Location</label>
+        <input id="ef-location" type="text" class="w-full border rounded p-2 mb-3" />
+
+        <div class="grid gap-3 sm:grid-cols-2 mb-3">
+          <div>
+            <label for="ef-starts" class="block font-medium">Starts</label>
+            <input id="ef-starts" type="datetime-local" class="w-full border rounded p-2" />
+          </div>
+          <div>
+            <label for="ef-ends" class="block font-medium">Ends</label>
+            <input id="ef-ends" type="datetime-local" class="w-full border rounded p-2" />
+          </div>
+        </div>
+
+        <label for="ef-image" class="block font-medium">Image (jpg, png or gif, max 2 MB)</label>
+        <input id="ef-image" type="file" accept=".jpg,.jpeg,.png,.gif" class="w-full mb-2" />
+        <img id="ef-preview" src="" alt="Event image preview" class="hidden max-h-48 rounded mb-3" />
+
+        <div id="uploadBox" class="hidden mb-3">
+          <div class="h-2 bg-gray-200 rounded">
+            <div class="upload-bar h-2 bg-blue-700 rounded w-0"></div>
+          </div>
+          <p class="upload-text text-sm" aria-live="polite"></p>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="submit" id="eventBtn" class="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800 disabled:opacity-60">Save event</button>
+          <a href="#/events" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
+        </div>
+      </form>
     </section>
 
   </main>
 
+  <footer id="footer" class="hidden bg-gray-800 text-gray-100 mt-8">
+    <div class="max-w-6xl mx-auto px-4 py-4 text-sm text-center">
+      <p>Contact and help: <a class="underline" href="mailto:help@civicevents.example">help@civicevents.example</a> | +250 000 000 000 | Monday to Friday, 8:00 to 17:00</p>
+      <p class="text-gray-300 mt-1">&copy; 2026 CivicEvents+</p>
+    </div>
+  </footer>
+
   <script src="main.js"></script>
+  <script src="events.js"></script>
 </body>
 </html>
