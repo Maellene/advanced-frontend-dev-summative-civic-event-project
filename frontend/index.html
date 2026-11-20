@@ -4,172 +4,376 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CivicEvents+</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            coffee: {
+              50: "#faf6f1", 100: "#f1e7da", 200: "#e2cfb7", 300: "#cfae88", 400: "#b98d61",
+              500: "#a3724a", 600: "#8a5b3a", 700: "#6f4730", 800: "#573726", 900: "#3b2418"
+            },
+            stone: {
+              50: "#faf7f3", 100: "#f1e9de", 200: "#e6d9c8", 300: "#d3c0a6", 400: "#a8927a",
+              500: "#85705c", 600: "#6b5848", 700: "#54443a", 800: "#3d3129", 900: "#2a211b"
+            }
+          },
+          borderRadius: { DEFAULT: "0.75rem" },
+          boxShadow: { DEFAULT: "0 4px 14px rgba(59, 36, 24, 0.10)" }
+        }
+      }
+    };
+  </script>
   <link rel="stylesheet" href="style.css" />
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+<body class="bg-coffee-50 text-stone-900 min-h-screen flex flex-col">
 
-  <header id="navbar" class="hidden bg-blue-800 text-white">
-    <nav class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3" aria-label="Main navigation">
-      <a href="#/events" class="text-xl font-bold">CivicEvents+</a>
+  <header id="navbar" class="hidden sticky top-0 z-30 bg-coffee-900 text-coffee-50 shadow-md">
+    <nav class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-2" aria-label="Main navigation">
+      <a href="#/events" class="text-xl font-bold mr-2" style="font-family: 'Playfair Display', Georgia, serif;">CivicEvents+</a>
 
       <form id="searchForm" role="search" class="flex-1 min-w-[160px] max-w-sm">
         <label for="global-search" class="sr-only">Search events</label>
-        <input id="global-search" type="search" placeholder="Search events..." class="w-full rounded px-3 py-1.5 text-gray-900" />
+        <input id="global-search" type="search" placeholder="Search events..." class="w-full rounded px-3 py-1.5 text-stone-900" />
       </form>
 
-      <a href="#/events" class="px-2 py-1 hover:underline">Events</a>
+      <a href="#/events" class="px-3 py-1.5 rounded hover:bg-coffee-700">Events</a>
+      <a href="#/announcements" class="px-3 py-1.5 rounded hover:bg-coffee-700">Announcements</a>
+      <a href="#/promos" class="px-3 py-1.5 rounded hover:bg-coffee-700">Promos</a>
+      <a href="#/dashboard" class="admin-only px-3 py-1.5 rounded hover:bg-coffee-700">Dashboard</a>
+      <a href="#/users" class="admin-only px-3 py-1.5 rounded hover:bg-coffee-700">Admin</a>
 
-      <div class="relative ml-auto">
-        <button id="profileBtn" type="button" aria-haspopup="true" aria-expanded="false" class="px-2 py-1 rounded hover:bg-blue-700">
-          <span id="profileName"></span> <span aria-hidden="true">&#9662;</span>
-        </button>
-        <div id="profileMenu" class="hidden absolute right-0 mt-2 w-44 bg-white text-gray-900 rounded shadow-lg z-40">
-          <button id="logoutBtn" type="button" class="block w-full text-left px-4 py-2 hover:bg-gray-100">Log out</button>
+      <div class="ml-auto flex items-center gap-2">
+        <div class="relative">
+          <button id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Notifications" class="relative px-2 py-1 rounded hover:bg-coffee-700">
+            <span aria-hidden="true">&#128276;</span>
+            <span id="bellCount" class="hidden absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full px-1.5">0</span>
+          </button>
+          <div id="bellPanel" class="hidden absolute right-0 mt-2 w-80 max-w-[90vw] bg-white text-stone-900 rounded shadow-lg z-40 overflow-hidden"></div>
+        </div>
+
+        <div class="relative">
+          <button id="profileBtn" type="button" aria-haspopup="true" aria-expanded="false" class="px-2 py-1 rounded hover:bg-coffee-700">
+            <span id="profileName"></span> <span aria-hidden="true">&#9662;</span>
+          </button>
+          <div id="profileMenu" class="hidden absolute right-0 mt-2 w-48 bg-white text-stone-900 rounded shadow-lg z-40 overflow-hidden">
+            <a href="#/profile" class="block px-4 py-2 hover:bg-stone-100">My profile</a>
+            <a href="#/my-registrations" class="user-only block px-4 py-2 hover:bg-stone-100">My registrations</a>
+            <button id="logoutBtn" type="button" class="block w-full text-left px-4 py-2 hover:bg-stone-100">Log out</button>
+          </div>
         </div>
       </div>
     </nav>
   </header>
 
-  <main id="app" class="flex-1 w-full max-w-6xl mx-auto p-4">
+  <div class="flex-1 w-full max-w-6xl mx-auto p-4 md:flex md:gap-6">
+    <aside id="adminSidebar" class="hidden md:w-56 md:shrink-0 mb-4 md:mb-0"></aside>
 
-    <section id="page-login" class="page max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
-      <h1 class="text-2xl font-bold mb-4">Log in</h1>
-      <p id="loginError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
+    <main id="app" class="flex-1 min-w-0">
 
-      <form id="loginForm" novalidate>
-        <label for="login-email" class="block font-medium">Email</label>
-        <input id="login-email" type="email" autocomplete="email" class="w-full border rounded p-2 mb-3" />
+      <section id="page-login" class="page max-w-md mx-auto bg-white p-8 rounded shadow mt-10 border-t-4 border-coffee-700">
+        <h1 class="text-3xl font-bold mb-1">Welcome back</h1>
+        <p class="text-stone-600 mb-5">Log in to see what is happening in your community.</p>
+        <p id="loginError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
 
-        <label for="login-password" class="block font-medium">Password</label>
-        <input id="login-password" type="password" autocomplete="current-password" class="w-full border rounded p-2 mb-3" />
+        <form id="loginForm" novalidate>
+          <label for="login-email" class="block font-medium">Email</label>
+          <input id="login-email" type="email" autocomplete="email" class="w-full border rounded p-2 mb-3" />
 
-        <label class="flex items-center gap-2 mb-4 text-sm">
-          <input id="remember" type="checkbox" /> Remember me on this device
-        </label>
+          <label for="login-password" class="block font-medium">Password</label>
+          <input id="login-password" type="password" autocomplete="current-password" class="w-full border rounded p-2 mb-3" />
 
-        <button type="submit" id="loginBtn" class="w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-800 disabled:opacity-60">Log in</button>
-      </form>
+          <label class="flex items-center gap-2 mb-4 text-sm">
+            <input id="remember" type="checkbox" /> Remember me on this device
+          </label>
 
-      <p class="mt-4 text-sm">No account? <a href="#/signup" class="text-blue-700 underline">Sign up</a></p>
-    </section>
+          <button type="submit" id="loginBtn" class="w-full bg-coffee-700 text-white py-2 rounded hover:bg-coffee-800 disabled:opacity-60">Log in</button>
+        </form>
 
-    <section id="page-signup" class="page max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
-      <h1 class="text-2xl font-bold mb-4">Create an account</h1>
-      <p id="signupError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
+        <p class="mt-4 text-sm">No account? <a href="#/signup" class="text-coffee-700 underline">Sign up</a></p>
+      </section>
 
-      <form id="signupForm" novalidate>
-        <label for="signup-name" class="block font-medium">Full name</label>
-        <input id="signup-name" type="text" autocomplete="name" class="w-full border rounded p-2 mb-3" />
+      <section id="page-signup" class="page max-w-md mx-auto bg-white p-8 rounded shadow mt-10 border-t-4 border-coffee-700">
+        <h1 class="text-3xl font-bold mb-1">Create an account</h1>
+        <p class="text-stone-600 mb-5">Join to discover events, announcements and promos.</p>
+        <p id="signupError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
 
-        <label for="signup-email" class="block font-medium">Email</label>
-        <input id="signup-email" type="email" autocomplete="email" class="w-full border rounded p-2 mb-3" />
+        <form id="signupForm" novalidate>
+          <label for="signup-name" class="block font-medium">Full name</label>
+          <input id="signup-name" type="text" autocomplete="name" class="w-full border rounded p-2 mb-3" />
 
-        <label for="signup-password" class="block font-medium">Password</label>
-        <input id="signup-password" type="password" autocomplete="new-password" class="w-full border rounded p-2 mb-2" />
+          <label for="signup-email" class="block font-medium">Email</label>
+          <input id="signup-email" type="email" autocomplete="email" class="w-full border rounded p-2 mb-3" />
 
-        <div class="h-2 bg-gray-200 rounded mb-1">
-          <div id="strengthBar" class="h-2 rounded w-0"></div>
-        </div>
-        <p id="strengthText" class="text-sm mb-1" aria-live="polite"></p>
-        <p class="text-sm text-gray-700 mb-3">At least 8 characters with uppercase, lowercase, a number and a special character.</p>
+          <label for="signup-password" class="block font-medium">Password</label>
+          <input id="signup-password" type="password" autocomplete="new-password" class="w-full border rounded p-2 mb-2" />
 
-        <label for="signup-confirm" class="block font-medium">Confirm password</label>
-        <input id="signup-confirm" type="password" autocomplete="new-password" class="w-full border rounded p-2 mb-4" />
+          <div class="h-2 bg-stone-200 rounded mb-1">
+            <div id="strengthBar" class="h-2 rounded w-0"></div>
+          </div>
+          <p id="strengthText" class="text-sm mb-1" aria-live="polite"></p>
+          <p class="text-sm text-stone-700 mb-3">At least 8 characters with uppercase, lowercase, a number and a special character.</p>
 
-        <button type="submit" id="signupBtn" class="w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-800 disabled:opacity-60">Sign up</button>
-      </form>
+          <label for="signup-confirm" class="block font-medium">Confirm password</label>
+          <input id="signup-confirm" type="password" autocomplete="new-password" class="w-full border rounded p-2 mb-4" />
 
-      <p class="mt-4 text-sm">Already have an account? <a href="#/login" class="text-blue-700 underline">Log in</a></p>
-    </section>
+          <button type="submit" id="signupBtn" class="w-full bg-coffee-700 text-white py-2 rounded hover:bg-coffee-800 disabled:opacity-60">Sign up</button>
+        </form>
 
-    <section id="page-events" class="page">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h1 class="text-2xl font-bold">Events</h1>
-        <a href="#/event-form" class="admin-only bg-blue-700 text-white px-3 py-1.5 rounded hover:bg-blue-800">Create event</a>
-      </div>
+        <p class="mt-4 text-sm">Already have an account? <a href="#/login" class="text-coffee-700 underline">Log in</a></p>
+      </section>
 
-      <form id="filterForm" class="grid gap-3 sm:grid-cols-4 mb-4 bg-white p-3 rounded shadow">
-        <div>
-          <label for="filter-search" class="block text-sm font-medium">Search</label>
-          <input id="filter-search" type="text" class="w-full border rounded p-2" />
-        </div>
-        <div>
-          <label for="filter-location" class="block text-sm font-medium">Location</label>
-          <input id="filter-location" type="text" class="w-full border rounded p-2" />
-        </div>
-        <div>
-          <label for="filter-date" class="block text-sm font-medium">From date</label>
-          <input id="filter-date" type="date" class="w-full border rounded p-2" />
-        </div>
-        <div class="flex items-end">
-          <button type="button" id="clearFilters" class="bg-gray-200 px-3 py-2 rounded hover:bg-gray-300">Clear filters</button>
-        </div>
-      </form>
-
-      <div id="eventList" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
-      <nav id="eventPager" class="flex flex-wrap gap-2 justify-center mt-6" aria-label="Events pages"></nav>
-    </section>
-
-    <section id="page-event" class="page">
-      <a href="#/events" class="text-blue-700 underline">&larr; Back to events</a>
-      <div id="eventDetail" class="mt-4"></div>
-    </section>
-
-    <section id="page-event-form" class="page max-w-2xl mx-auto bg-white p-6 rounded shadow">
-      <h1 id="eventFormTitle" class="text-2xl font-bold mb-4">Create event</h1>
-      <p id="eventFormError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
-
-      <form id="eventForm" novalidate>
-        <label for="ef-title" class="block font-medium">Title</label>
-        <input id="ef-title" type="text" class="w-full border rounded p-2 mb-3" />
-
-        <label for="ef-description" class="block font-medium">Description</label>
-        <textarea id="ef-description" rows="4" class="w-full border rounded p-2 mb-3"></textarea>
-
-        <label for="ef-location" class="block font-medium">Location</label>
-        <input id="ef-location" type="text" class="w-full border rounded p-2 mb-3" />
-
-        <div class="grid gap-3 sm:grid-cols-2 mb-3">
+      <section id="page-events" class="page">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
-            <label for="ef-starts" class="block font-medium">Starts</label>
-            <input id="ef-starts" type="datetime-local" class="w-full border rounded p-2" />
+            <h1 class="text-3xl font-bold">Events</h1>
+            <p class="text-stone-600">Discover what is happening around you.</p>
+          </div>
+          <a href="#/event-form" class="admin-only bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800">Create event</a>
+        </div>
+
+        <form id="filterForm" class="grid gap-3 sm:grid-cols-4 mb-5 bg-white p-4 rounded shadow">
+          <div>
+            <label for="filter-search" class="block text-sm font-medium">Search</label>
+            <input id="filter-search" type="text" class="w-full border rounded p-2" />
           </div>
           <div>
-            <label for="ef-ends" class="block font-medium">Ends</label>
-            <input id="ef-ends" type="datetime-local" class="w-full border rounded p-2" />
+            <label for="filter-location" class="block text-sm font-medium">Location</label>
+            <input id="filter-location" type="text" class="w-full border rounded p-2" />
           </div>
-        </div>
-
-        <label for="ef-image" class="block font-medium">Image (jpg, png or gif, max 2 MB)</label>
-        <input id="ef-image" type="file" accept=".jpg,.jpeg,.png,.gif" class="w-full mb-2" />
-        <img id="ef-preview" src="" alt="Event image preview" class="hidden max-h-48 rounded mb-3" />
-
-        <div id="uploadBox" class="hidden mb-3">
-          <div class="h-2 bg-gray-200 rounded">
-            <div class="upload-bar h-2 bg-blue-700 rounded w-0"></div>
+          <div>
+            <label for="filter-date" class="block text-sm font-medium">From date</label>
+            <input id="filter-date" type="date" class="w-full border rounded p-2" />
           </div>
-          <p class="upload-text text-sm" aria-live="polite"></p>
+          <div class="flex items-end">
+            <button type="button" id="clearFilters" class="bg-stone-200 px-3 py-2 rounded hover:bg-stone-300">Clear filters</button>
+          </div>
+        </form>
+
+        <div id="eventList" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
+        <nav id="eventPager" class="flex flex-wrap gap-2 justify-center mt-6" aria-label="Events pages"></nav>
+      </section>
+
+      <section id="page-event" class="page">
+        <a href="#/events" class="text-coffee-700 underline">&larr; Back to events</a>
+        <div id="eventDetail" class="mt-4"></div>
+        <div id="eventExtras"></div>
+      </section>
+
+      <section id="page-event-form" class="page max-w-2xl mx-auto bg-white p-6 rounded shadow">
+        <h1 id="eventFormTitle" class="text-3xl font-bold mb-4">Create event</h1>
+        <p id="eventFormError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
+
+        <form id="eventForm" novalidate>
+          <label for="ef-title" class="block font-medium">Title</label>
+          <input id="ef-title" type="text" class="w-full border rounded p-2 mb-3" />
+
+          <label for="ef-description" class="block font-medium">Description</label>
+          <textarea id="ef-description" rows="4" class="w-full border rounded p-2 mb-3"></textarea>
+
+          <label for="ef-location" class="block font-medium">Location</label>
+          <input id="ef-location" type="text" class="w-full border rounded p-2 mb-3" />
+
+          <div class="grid gap-3 sm:grid-cols-2 mb-3">
+            <div>
+              <label for="ef-starts" class="block font-medium">Starts</label>
+              <input id="ef-starts" type="datetime-local" class="w-full border rounded p-2" />
+            </div>
+            <div>
+              <label for="ef-ends" class="block font-medium">Ends</label>
+              <input id="ef-ends" type="datetime-local" class="w-full border rounded p-2" />
+            </div>
+          </div>
+
+          <label for="ef-image" class="block font-medium">Image (jpg, png or gif, max 2 MB)</label>
+          <input id="ef-image" type="file" accept=".jpg,.jpeg,.png,.gif" class="w-full mb-2" />
+          <img id="ef-preview" src="" alt="Event image preview" class="hidden max-h-48 rounded mb-3" />
+
+          <div id="uploadBox" class="hidden mb-3">
+            <div class="h-2 bg-stone-200 rounded">
+              <div class="upload-bar h-2 bg-coffee-700 rounded w-0"></div>
+            </div>
+            <p class="upload-text text-sm" aria-live="polite"></p>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="submit" id="eventBtn" class="bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800 disabled:opacity-60">Save event</button>
+            <a href="#/events" class="bg-stone-200 px-4 py-2 rounded hover:bg-stone-300">Cancel</a>
+          </div>
+        </form>
+      </section>
+
+      <section id="page-my-registrations" class="page">
+        <h1 class="text-3xl font-bold mb-4">My registrations</h1>
+        <div id="registrationList" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
+      </section>
+
+      <section id="page-announcements" class="page">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h1 class="text-3xl font-bold">Announcements</h1>
+            <p class="text-stone-600">Listen to the latest updates.</p>
+          </div>
+          <a href="#/announcement-form" class="admin-only bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800">Create announcement</a>
         </div>
+        <div id="announcementList" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
+      </section>
 
-        <div class="flex gap-2">
-          <button type="submit" id="eventBtn" class="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800 disabled:opacity-60">Save event</button>
-          <a href="#/events" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Cancel</a>
+      <section id="page-announcement" class="page">
+        <a href="#/announcements" class="text-coffee-700 underline">&larr; Back to announcements</a>
+        <div id="announcementDetail" class="mt-4"></div>
+      </section>
+
+      <section id="page-announcement-form" class="page max-w-2xl mx-auto bg-white p-6 rounded shadow">
+        <h1 id="announcementFormTitle" class="text-3xl font-bold mb-4">Create announcement</h1>
+        <p id="announcementFormError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
+
+        <form id="announcementForm" novalidate>
+          <label for="af-title" class="block font-medium">Title</label>
+          <input id="af-title" type="text" class="w-full border rounded p-2 mb-3" />
+
+          <label for="af-audio" class="block font-medium">Audio (mp3, wav, m4a or ogg, max 5 MB)</label>
+          <input id="af-audio" type="file" accept=".mp3,.wav,.m4a,.ogg" class="w-full mb-2" />
+          <audio id="af-preview" controls class="hidden w-full mb-3" aria-label="Audio preview"></audio>
+
+          <label class="flex items-center gap-2 mb-3">
+            <input id="af-published" type="checkbox" checked /> Published
+          </label>
+
+          <div id="announcementUploadBox" class="hidden mb-3">
+            <div class="h-2 bg-stone-200 rounded">
+              <div class="upload-bar h-2 bg-coffee-700 rounded w-0"></div>
+            </div>
+            <p class="upload-text text-sm" aria-live="polite"></p>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="submit" id="announcementBtn" class="bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800 disabled:opacity-60">Save announcement</button>
+            <a href="#/announcements" class="bg-stone-200 px-4 py-2 rounded hover:bg-stone-300">Cancel</a>
+          </div>
+        </form>
+      </section>
+
+      <section id="page-promos" class="page">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h1 class="text-3xl font-bold">Promos</h1>
+            <p class="text-stone-600">Watch videos from your community.</p>
+          </div>
+          <a href="#/promo-form" class="admin-only bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800">Create promo</a>
         </div>
-      </form>
-    </section>
+        <div id="promoList" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
+      </section>
 
-  </main>
+      <section id="page-promo" class="page">
+        <a href="#/promos" class="text-coffee-700 underline">&larr; Back to promos</a>
+        <div id="promoDetail" class="mt-4"></div>
+      </section>
 
-  <footer id="footer" class="hidden bg-gray-800 text-gray-100 mt-8">
-    <div class="max-w-6xl mx-auto px-4 py-4 text-sm text-center">
+      <section id="page-promo-form" class="page max-w-2xl mx-auto bg-white p-6 rounded shadow">
+        <h1 id="promoFormTitle" class="text-3xl font-bold mb-4">Create promo</h1>
+        <p id="promoFormError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
+
+        <form id="promoForm" novalidate>
+          <label for="pf-title" class="block font-medium">Title</label>
+          <input id="pf-title" type="text" class="w-full border rounded p-2 mb-3" />
+
+          <label for="pf-description" class="block font-medium">Description</label>
+          <textarea id="pf-description" rows="3" class="w-full border rounded p-2 mb-3"></textarea>
+
+          <label for="pf-caption" class="block font-medium">Caption text</label>
+          <textarea id="pf-caption" rows="3" class="w-full border rounded p-2 mb-3"></textarea>
+
+          <label for="pf-video" class="block font-medium">Video (mp4 recommended, also mov, avi or mkv, max 8 MB)</label>
+          <input id="pf-video" type="file" accept=".mp4,.mov,.avi,.mkv" class="w-full mb-2" />
+          <video id="pf-preview" controls class="hidden max-h-60 mb-3" aria-label="Video preview"></video>
+
+          <div id="promoUploadBox" class="hidden mb-3">
+            <div class="h-2 bg-stone-200 rounded">
+              <div class="upload-bar h-2 bg-coffee-700 rounded w-0"></div>
+            </div>
+            <p class="upload-text text-sm" aria-live="polite"></p>
+          </div>
+
+          <div class="flex gap-2">
+            <button type="submit" id="promoBtn" class="bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800 disabled:opacity-60">Save promo</button>
+            <a href="#/promos" class="bg-stone-200 px-4 py-2 rounded hover:bg-stone-300">Cancel</a>
+          </div>
+        </form>
+      </section>
+
+      <section id="page-notifications" class="page">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h1 class="text-3xl font-bold">Notifications</h1>
+          <button type="button" id="markAllRead" class="bg-stone-200 px-3 py-1.5 rounded hover:bg-stone-300">Mark all as read</button>
+        </div>
+        <div id="notificationList" class="space-y-3"></div>
+      </section>
+
+      <section id="page-notification" class="page">
+        <a href="#/notifications" class="text-coffee-700 underline">&larr; Back to notifications</a>
+        <div id="notificationDetail" class="mt-4"></div>
+      </section>
+
+      <section id="page-profile" class="page max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold mb-4">My profile</h1>
+        <div id="profileInfo" class="bg-white p-6 rounded shadow mb-4"></div>
+
+        <form id="profileForm" class="bg-white p-6 rounded shadow" novalidate>
+          <h2 class="text-xl font-semibold mb-3">Update my details</h2>
+          <p id="profileError" class="hidden text-red-800 bg-red-50 p-2 rounded mb-3" role="alert"></p>
+
+          <label for="pr-name" class="block font-medium">Full name</label>
+          <input id="pr-name" type="text" class="w-full border rounded p-2 mb-3" />
+
+          <label for="pr-email" class="block font-medium">Email</label>
+          <input id="pr-email" type="email" class="w-full border rounded p-2 mb-4" />
+
+          <button type="submit" id="profileSaveBtn" class="bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800 disabled:opacity-60">Save changes</button>
+        </form>
+      </section>
+
+      <section id="page-dashboard" class="page">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <h1 class="text-3xl font-bold">Dashboard</h1>
+          <button type="button" id="refreshDashboard" class="bg-stone-200 px-3 py-1.5 rounded hover:bg-stone-300">Refresh</button>
+        </div>
+        <div id="dashboardContent"></div>
+      </section>
+
+      <section id="page-users" class="page">
+        <h1 class="text-3xl font-bold mb-4">Users</h1>
+        <label for="user-search" class="block text-sm font-medium">Search by name or email</label>
+        <input id="user-search" type="search" class="w-full max-w-sm border rounded p-2 mb-4" />
+        <div id="userList"></div>
+      </section>
+
+      <section id="page-user" class="page">
+        <a href="#/users" class="text-coffee-700 underline">&larr; Back to users</a>
+        <div id="userDetail" class="mt-4"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer id="footer" class="hidden bg-coffee-900 text-coffee-100 mt-8">
+    <div class="max-w-6xl mx-auto px-4 py-5 text-sm text-center">
       <p>Contact and help: <a class="underline" href="mailto:help@civicevents.example">help@civicevents.example</a> | +250 000 000 000 | Monday to Friday, 8:00 to 17:00</p>
-      <p class="text-gray-300 mt-1">&copy; 2026 CivicEvents+</p>
+      <p class="text-coffee-300 mt-1">&copy; 2026 CivicEvents+</p>
     </div>
   </footer>
 
   <script src="main.js"></script>
   <script src="events.js"></script>
+  <script src="registrations.js"></script>
+  <script src="announcements.js"></script>
+  <script src="promos.js"></script>
+  <script src="notifications.js"></script>
+  <script src="users.js"></script>
 </body>
 </html>

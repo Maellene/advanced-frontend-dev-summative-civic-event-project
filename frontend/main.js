@@ -8,6 +8,15 @@ const pageLoaders = {};
 const PUBLIC_PAGES = ["login", "signup"];
 const ADMIN_PAGES = [];
 
+const SIDEBAR_ITEMS = [
+  ["dashboard", "Dashboard", ["dashboard"]],
+  ["users", "Users", ["users", "user"]],
+  ["events", "Events", ["events", "event", "event-form"]],
+  ["announcements", "Announcements", ["announcements", "announcement", "announcement-form"]],
+  ["promos", "Promos", ["promos", "promo", "promo-form"]],
+  ["notifications", "Notifications", ["notifications", "notification"]],
+];
+
 // Remember me ticked: localStorage (kept after closing the browser).
 // Not ticked: sessionStorage (cleared when the tab closes).
 // Security trade-off: localStorage can be read by any script on the page (XSS risk).
@@ -39,6 +48,10 @@ function isAdmin() {
   return !!user && user.role === "admin";
 }
 
+function homePage() {
+  return isAdmin() ? "dashboard" : "events";
+}
+
 function logout(message, type) {
   clearSession();
   goTo("login");
@@ -50,7 +63,7 @@ function showToast(message, type) {
   if (!box.length) {
     box = $('<div id="toastBox" role="status" aria-live="polite" class="fixed top-4 right-4 z-50 max-w-sm"></div>').appendTo("body");
   }
-  const color = type === "error" ? "bg-red-700" : "bg-green-700";
+  const color = type === "error" ? "bg-red-700" : "bg-green-800";
   const toast = $('<div class="px-4 py-3 text-white rounded shadow mb-2"></div>').addClass(color).text(message);
   box.append(toast);
   setTimeout(function () {
@@ -135,8 +148,15 @@ function toLocalInput(value) {
 function getList(res) {
   if (Array.isArray(res)) return res;
   if (!res) return [];
-  const inner = res.data || [];
-  return Array.isArray(inner) ? inner : [];
+  const inner = res.data !== undefined ? res.data : res;
+  if (Array.isArray(inner)) return inner;
+  if (inner && typeof inner === "object") {
+    const keys = Object.keys(inner);
+    for (let i = 0; i < keys.length; i++) {
+      if (Array.isArray(inner[keys[i]])) return inner[keys[i]];
+    }
+  }
+  return [];
 }
 
 function getItem(res) {
@@ -147,9 +167,9 @@ function skeleton(count) {
   let html = "";
   for (let i = 0; i < count; i++) {
     html += '<div class="bg-white rounded shadow p-4 animate-pulse">' +
-      '<div class="h-32 bg-gray-200 rounded mb-3"></div>' +
-      '<div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>' +
-      '<div class="h-4 bg-gray-200 rounded w-1/2"></div></div>';
+      '<div class="h-32 bg-stone-200 rounded mb-3"></div>' +
+      '<div class="h-4 bg-stone-200 rounded w-3/4 mb-2"></div>' +
+      '<div class="h-4 bg-stone-200 rounded w-1/2"></div></div>';
   }
   return html;
 }
@@ -157,7 +177,7 @@ function skeleton(count) {
 function errorBox(message) {
   return '<div class="col-span-full bg-red-50 text-red-800 p-4 rounded" role="alert">' +
     "<p>" + esc(message) + "</p>" +
-    '<button type="button" class="retry mt-2 bg-blue-700 text-white px-3 py-1.5 rounded">Retry</button></div>';
+    '<button type="button" class="retry mt-2 bg-coffee-700 text-white px-3 py-1.5 rounded hover:bg-coffee-800">Retry</button></div>';
 }
 
 function checkFile(file, extensions, maxMB) {
@@ -179,19 +199,39 @@ function applyRoleVisibility() {
   $(".user-only").toggleClass("hidden", isAdmin());
 }
 
+// Guard 3 (menu): the admin menu is only built for admins and never on login or signup.
+function showAdminSidebar(page, isPublic) {
+  if (isPublic || !isAdmin()) {
+    $("#adminSidebar").addClass("hidden").empty();
+    return;
+  }
+
+  let html = '<nav aria-label="Admin menu" class="bg-white rounded shadow p-3 md:sticky md:top-20">' +
+    '<h2 class="font-bold mb-2 px-2">Admin menu</h2><ul class="space-y-1">';
+  SIDEBAR_ITEMS.forEach(function (item) {
+    const current = item[2].indexOf(page) !== -1;
+    html += '<li><a href="#/' + item[0] + '" class="block px-3 py-2 rounded hover:bg-stone-100' +
+      (current ? " bg-coffee-100 font-semibold text-coffee-900" : "") + '"' +
+      (current ? ' aria-current="page"' : "") + ">" + item[1] + "</a></li>";
+  });
+  html += "</ul></nav>";
+
+  $("#adminSidebar").html(html).removeClass("hidden");
+}
+
 function goTo(page) {
   location.hash = "#/" + page;
 }
 
 function route() {
   const parts = location.hash.replace("#/", "").split("/");
-  const page = parts[0] || (getToken() ? "events" : "login");
+  const page = parts[0] || (getToken() ? homePage() : "login");
   const id = parts[1];
   const isPublic = PUBLIC_PAGES.indexOf(page) !== -1;
 
   // Guard 1: every screen except login and signup needs a logged-in user.
   if (!isPublic && !getToken()) return goTo("login");
-  if (isPublic && getToken()) return goTo("events");
+  if (isPublic && getToken()) return goTo(homePage());
 
   // Guard 2: admin screens send a normal user back to events.
   if (ADMIN_PAGES.indexOf(page) !== -1 && !isAdmin()) {
@@ -205,10 +245,22 @@ function route() {
   $("#page-" + page).addClass("active");
   $("#navbar, #footer").toggleClass("hidden", isPublic);
   $("#profileName").text(isPublic ? "" : getUser().full_name);
+  showAdminSidebar(page, isPublic);
   applyRoleVisibility();
   window.scrollTo(0, 0);
 
   if (pageLoaders[page]) pageLoaders[page](id);
+}
+
+// The backend login does not block disabled accounts, so the frontend checks the
+// profile after login and on page load and signs disabled users out.
+function checkAccountActive() {
+  apiRequest("GET", "/users/profile/me").done(function (res) {
+    const profile = getItem(res);
+    if (profile && profile.is_active === false) {
+      logout("Your account has been disabled. Please contact an admin.", "error");
+    }
+  });
 }
 
 $("#logoutBtn").on("click", function () {
@@ -250,11 +302,11 @@ function showSignupError(message) {
 $("#signup-password").on("input", function () {
   const score = passwordScore($(this).val());
   const levels = [
-    { text: "", color: "bg-gray-200" },
+    { text: "", color: "bg-stone-200" },
     { text: "Very weak", color: "bg-red-600" },
     { text: "Weak", color: "bg-orange-600" },
     { text: "Fair", color: "bg-yellow-600" },
-    { text: "Good", color: "bg-blue-600" },
+    { text: "Good", color: "bg-coffee-600" },
     { text: "Strong", color: "bg-green-700" },
   ];
   $("#strengthBar")
@@ -316,8 +368,21 @@ $("#loginForm").on("submit", function (e) {
         return showLoginError("Login worked but the response has no token or user.");
       }
       saveSession(data.token, data.user, $("#remember").is(":checked"));
-      $("#loginForm")[0].reset();
-      goTo("events");
+
+      apiRequest("GET", "/users/profile/me")
+        .done(function (profileRes) {
+          const profile = getItem(profileRes);
+          if (profile && profile.is_active === false) {
+            clearSession();
+            return showLoginError("Your account has been disabled. Please contact an admin.");
+          }
+          $("#loginForm")[0].reset();
+          goTo(homePage());
+        })
+        .fail(function (xhr) {
+          clearSession();
+          showLoginError(getErrorMessage(xhr));
+        });
     })
     .fail(function (xhr) {
       showLoginError(getErrorMessage(xhr));
@@ -329,3 +394,6 @@ $("#loginForm").on("submit", function (e) {
 
 $(window).on("hashchange", route);
 $(route);
+$(function () {
+  if (getToken()) checkAccountActive();
+});

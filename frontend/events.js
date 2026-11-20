@@ -2,6 +2,7 @@ const EVENTS_PER_PAGE = 6;
 let allEvents = [];
 let eventPage = 1;
 let editingEventId = null;
+let registeredIds = [];
 
 pageLoaders["events"] = loadEvents;
 pageLoaders["event"] = loadEventDetail;
@@ -27,28 +28,65 @@ function loadEvents() {
   apiRequest("GET", "/events")
     .done(function (res) {
       allEvents = getList(res);
-      showEvents();
+      loadMyRegisteredIds();
     })
     .fail(function (xhr) {
       $("#eventList").html(errorBox(getErrorMessage(xhr)));
     });
 }
 
-function eventCard(ev) {
+function loadMyRegisteredIds() {
+  registeredIds = [];
+  if (isAdmin()) return showEvents();
+  apiRequest("GET", "/event-registrations/my-registrations")
+    .done(function (res) {
+      registeredIds = getList(res).filter(isActiveRegistration).map(registrationEventId);
+    })
+    .always(showEvents);
+}
+
+function registerButton(ev) {
+  if (registeredIds.indexOf(String(ev.id)) !== -1) {
+    return '<button type="button" data-id="' + esc(ev.id) + '" class="card-cancel user-only bg-red-700 text-white px-3 py-1.5 rounded text-sm hover:bg-red-800">Cancel registration</button>';
+  }
+  return '<button type="button" data-id="' + esc(ev.id) + '" class="card-register user-only bg-green-800 text-white px-3 py-1.5 rounded text-sm hover:bg-green-900">Register</button>';
+}
+
+function eventBadge(ev) {
+  const now = new Date();
+  const start = new Date(ev.starts_at);
+  const end = new Date(ev.ends_at);
+  if (now > end) return "Ended";
+  if (now >= start) return "Happening now";
+  const days = Math.ceil((start - now) / 86400000);
+  return days <= 1 ? "Starts soon" : "In " + days + " days";
+}
+
+function eventCard(ev, hideRegister) {
   const img = eventImage(ev);
-  return '<article class="bg-white rounded shadow overflow-hidden flex flex-col">' +
-    (img ? '<img src="' + esc(img) + '" alt="' + esc(ev.title) + '" loading="lazy" class="h-40 w-full object-cover" />' : "") +
-    '<div class="p-4 flex flex-col flex-1">' +
-    '<h2 class="text-lg font-semibold">' + esc(ev.title) + "</h2>" +
-    '<p class="text-sm text-gray-700">' + esc(formatDate(ev.starts_at)) + "</p>" +
-    '<p class="text-sm text-gray-700 mb-2">' + esc(ev.location) + "</p>" +
-    '<p class="text-sm mb-3">' + esc(shortText(ev.description, 100)) + "</p>" +
-    '<div class="mt-auto flex flex-wrap gap-2">' +
-    '<a href="#/event/' + esc(ev.id) + '" class="bg-blue-700 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-800">View</a>' +
-    '<a href="#/event-form/' + esc(ev.id) + '" class="admin-only bg-gray-200 px-3 py-1.5 rounded text-sm hover:bg-gray-300">Edit</a>' +
+  return '<article class="relative overflow-hidden rounded-2xl shadow bg-coffee-800 text-white aspect-[3/4] flex flex-col justify-end cursor-pointer">' +
+    (img ? '<img src="' + esc(img) + '" alt="' + esc(ev.title) + '" loading="lazy" class="absolute inset-0 w-full h-full object-cover" />' : "") +
+    '<div class="absolute inset-0 bg-gradient-to-t from-coffee-900 via-coffee-900/70 to-transparent"></div>' +
+    '<span class="absolute top-3 left-3 bg-coffee-900/85 text-white text-sm font-semibold px-3 py-1 rounded-lg">' + esc(eventBadge(ev)) + "</span>" +
+    '<div class="relative p-4">' +
+    '<p class="text-sm text-coffee-100 mb-1"><span aria-hidden="true">&#128205;</span> ' + esc(ev.location) + "</p>" +
+    '<h2 class="text-xl font-bold text-white mb-1" style="font-family: \'Playfair Display\', Georgia, serif;">' + esc(ev.title) + "</h2>" +
+    '<p class="text-sm text-coffee-100 mb-1">' + esc(formatDate(ev.starts_at)) + "</p>" +
+    '<p class="text-sm text-coffee-50 mb-3 line-clamp-2">' + esc(ev.description) + "</p>" +
+    '<div class="flex flex-wrap gap-2">' +
+    '<a href="#/event/' + esc(ev.id) + '" class="bg-white text-coffee-900 px-3 py-1.5 rounded text-sm font-medium hover:bg-coffee-100">View</a>' +
+    (hideRegister ? "" : registerButton(ev)) +
+    '<a href="#/event-form/' + esc(ev.id) + '" class="admin-only bg-stone-200 text-stone-900 px-3 py-1.5 rounded text-sm hover:bg-stone-300">Edit</a>' +
     '<button type="button" data-id="' + esc(ev.id) + '" class="delete-event admin-only bg-red-700 text-white px-3 py-1.5 rounded text-sm hover:bg-red-800">Delete</button>' +
     "</div></div></article>";
 }
+
+// Clicking anywhere on a card opens it, unless a button, link or player was clicked.
+$(document).on("click", ".grid article", function (e) {
+  if ($(e.target).closest("a, button, audio, video, input, select, textarea").length) return;
+  const link = $(this).find('a[href^="#/"]').first();
+  if (link.length) location.hash = link.attr("href");
+});
 
 function showEvents() {
   const search = $("#filter-search").val().trim().toLowerCase();
@@ -68,9 +106,9 @@ function showEvents() {
   const start = (eventPage - 1) * EVENTS_PER_PAGE;
 
   if (list.length === 0) {
-    $("#eventList").html('<p class="col-span-full text-gray-700">No events found.</p>');
+    $("#eventList").html('<p class="col-span-full text-stone-700">No events found.</p>');
   } else {
-    $("#eventList").html(list.slice(start, start + EVENTS_PER_PAGE).map(eventCard).join(""));
+    $("#eventList").html(list.slice(start, start + EVENTS_PER_PAGE).map(function (ev) { return eventCard(ev); }).join(""));
   }
   showPager(pages);
   applyRoleVisibility();
@@ -83,7 +121,7 @@ function showPager(pages) {
   function pageButton(label, target, disabled, current) {
     return '<button type="button" data-page="' + target + '"' + (disabled ? " disabled" : "") +
       (current ? ' aria-current="page"' : "") +
-      ' class="px-3 py-1.5 rounded border ' + (current ? "bg-blue-700 text-white" : "bg-white hover:bg-gray-100") +
+      ' class="px-3 py-1.5 rounded border ' + (current ? "bg-coffee-700 text-white" : "bg-white hover:bg-stone-100") +
       (disabled ? " opacity-50" : "") + '">' + label + "</button>";
   }
 
@@ -171,10 +209,10 @@ function renderEventDetail(ev) {
     "<p><strong>Starts:</strong> " + esc(formatDate(ev.starts_at)) + "</p>" +
     "<p><strong>Ends:</strong> " + esc(formatDate(ev.ends_at)) + "</p>" +
     '<p class="mb-4"><strong>Location:</strong> ' + esc(ev.location) +
-    ' (<a href="' + esc(mapUrl) + '" target="_blank" rel="noopener" class="text-blue-700 underline">View on map</a>)</p>' +
+    ' (<a href="' + esc(mapUrl) + '" target="_blank" rel="noopener" class="text-coffee-700 underline">View on map</a>)</p>' +
     '<p class="whitespace-pre-line mb-4">' + esc(ev.description) + "</p>" +
     '<div class="flex gap-2">' +
-    '<a href="#/event-form/' + esc(ev.id) + '" class="admin-only bg-gray-200 px-3 py-1.5 rounded hover:bg-gray-300">Edit</a>' +
+    '<a href="#/event-form/' + esc(ev.id) + '" class="admin-only bg-stone-200 px-3 py-1.5 rounded hover:bg-stone-300">Edit</a>' +
     '<button type="button" data-id="' + esc(ev.id) + '" class="delete-event admin-only bg-red-700 text-white px-3 py-1.5 rounded hover:bg-red-800">Delete</button>' +
     "</div></div></article>"
   );
