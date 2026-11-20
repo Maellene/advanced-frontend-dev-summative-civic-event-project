@@ -182,7 +182,11 @@ $(document).on("click", ".delete-event", function () {
       else goTo("events");
     })
     .fail(function (xhr) {
-      showToast(getErrorMessage(xhr), "error");
+      if (/foreign key/i.test(getErrorMessage(xhr))) {
+        showToast("This event has registrations, so it cannot be deleted.", "error");
+      } else {
+        showToast(getErrorMessage(xhr), "error");
+      }
     });
 });
 
