@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
-<body class="bg-coffee-50 text-stone-900 min-h-screen flex flex-col">
+<body class="text-stone-900 min-h-screen flex flex-col">
 
   <header id="navbar" class="hidden sticky top-0 z-30 bg-coffee-900 text-coffee-50 shadow-md">
     <nav class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-2" aria-label="Main navigation">
@@ -49,7 +49,7 @@
       <div class="ml-auto flex items-center gap-2">
         <div class="relative">
           <button id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Notifications" class="relative px-2 py-1 rounded hover:bg-coffee-700">
-            <span aria-hidden="true">&#128276;</span>
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4S6 14 6 9z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
             <span id="bellCount" class="hidden absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full px-1.5">0</span>
           </button>
           <div id="bellPanel" class="hidden absolute right-0 mt-2 w-80 max-w-[90vw] bg-white text-stone-900 rounded shadow-lg z-40 overflow-hidden"></div>
@@ -127,31 +127,45 @@
       </section>
 
       <section id="page-events" class="page">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div>
-            <h1 class="text-3xl font-bold">Events</h1>
-            <p class="text-stone-600">Discover what is happening around you.</p>
+        <div class="hero rounded-2xl p-6 sm:p-10 pb-16 sm:pb-20">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="text-coffee-200 uppercase tracking-widest text-xs mb-2">CivicEvents+</p>
+              <h1 class="text-4xl sm:text-5xl font-bold">Find your next event</h1>
+              <p class="text-coffee-100 mt-3 max-w-xl">Meet your community, join events that matter and share what you think.</p>
+            </div>
+            <a href="#/event-form" class="admin-only bg-white text-coffee-900 font-semibold px-5 py-2.5 rounded-full shadow hover:bg-coffee-100">+ Create event</a>
           </div>
-          <a href="#/event-form" class="admin-only bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800">Create event</a>
         </div>
 
-        <form id="filterForm" class="grid gap-3 sm:grid-cols-4 mb-5 bg-white p-4 rounded shadow">
+        <form id="filterForm" class="relative z-10 -mt-10 mx-3 sm:mx-6 grid gap-3 sm:grid-cols-4 mb-5 bg-white p-4 sm:p-5 rounded-2xl shadow-lg">
           <div>
             <label for="filter-search" class="block text-sm font-medium">Search</label>
-            <input id="filter-search" type="text" class="w-full border rounded p-2" />
+            <input id="filter-search" type="text" placeholder="Title or description" class="w-full border rounded-full px-4 py-2" />
           </div>
           <div>
             <label for="filter-location" class="block text-sm font-medium">Location</label>
-            <input id="filter-location" type="text" class="w-full border rounded p-2" />
+            <input id="filter-location" type="text" placeholder="Any place" class="w-full border rounded-full px-4 py-2" />
           </div>
           <div>
             <label for="filter-date" class="block text-sm font-medium">From date</label>
-            <input id="filter-date" type="date" class="w-full border rounded p-2" />
+            <input id="filter-date" type="date" class="w-full border rounded-full px-4 py-2" />
           </div>
           <div class="flex items-end">
-            <button type="button" id="clearFilters" class="bg-stone-200 px-3 py-2 rounded hover:bg-stone-300">Clear filters</button>
+            <button type="button" id="clearFilters" class="bg-coffee-100 text-coffee-900 px-5 py-2 rounded-full hover:bg-coffee-200">Clear filters</button>
           </div>
         </form>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div id="statusChips" class="flex flex-wrap gap-2" role="group" aria-label="Filter by status">
+            <button type="button" data-status="active" aria-pressed="true" class="chip active">Current</button>
+            <button type="button" data-status="upcoming" aria-pressed="false" class="chip">Upcoming</button>
+            <button type="button" data-status="now" aria-pressed="false" class="chip">Happening now</button>
+            <button type="button" data-status="ended" aria-pressed="false" class="chip">Ended</button>
+            <button type="button" data-status="all" aria-pressed="false" class="chip">All</button>
+          </div>
+          <p id="eventCount" class="text-sm text-stone-700" aria-live="polite"></p>
+        </div>
 
         <div id="eventList" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
         <nav id="eventPager" class="flex flex-wrap gap-2 justify-center mt-6" aria-label="Events pages"></nav>
@@ -212,12 +226,15 @@
       </section>
 
       <section id="page-announcements" class="page">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div>
-            <h1 class="text-3xl font-bold">Announcements</h1>
-            <p class="text-stone-600">Listen to the latest updates.</p>
+        <div class="hero rounded-2xl p-6 sm:p-10 mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="text-coffee-200 uppercase tracking-widest text-xs mb-2">CivicEvents+</p>
+              <h1 class="text-4xl sm:text-5xl font-bold">Announcements</h1>
+              <p class="text-coffee-100 mt-3 max-w-xl">Listen to the latest updates from your community.</p>
+            </div>
+            <a href="#/announcement-form" class="admin-only bg-white text-coffee-900 font-semibold px-5 py-2.5 rounded-full shadow hover:bg-coffee-100">+ Create announcement</a>
           </div>
-          <a href="#/announcement-form" class="admin-only bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800">Create announcement</a>
         </div>
         <div id="announcementList" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
       </section>
@@ -258,12 +275,15 @@
       </section>
 
       <section id="page-promos" class="page">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <div>
-            <h1 class="text-3xl font-bold">Promos</h1>
-            <p class="text-stone-600">Watch videos from your community.</p>
+        <div class="hero rounded-2xl p-6 sm:p-10 mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="text-coffee-200 uppercase tracking-widest text-xs mb-2">CivicEvents+</p>
+              <h1 class="text-4xl sm:text-5xl font-bold">Promos</h1>
+              <p class="text-coffee-100 mt-3 max-w-xl">Watch short videos from your community.</p>
+            </div>
+            <a href="#/promo-form" class="admin-only bg-white text-coffee-900 font-semibold px-5 py-2.5 rounded-full shadow hover:bg-coffee-100">+ Create promo</a>
           </div>
-          <a href="#/promo-form" class="admin-only bg-coffee-700 text-white px-4 py-2 rounded hover:bg-coffee-800">Create promo</a>
         </div>
         <div id="promoList" class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
       </section>
@@ -337,9 +357,15 @@
       </section>
 
       <section id="page-dashboard" class="page">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
-          <h1 class="text-3xl font-bold">Dashboard</h1>
-          <button type="button" id="refreshDashboard" class="bg-stone-200 px-3 py-1.5 rounded hover:bg-stone-300">Refresh</button>
+        <div class="hero rounded-2xl p-6 sm:p-8 mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p class="text-coffee-200 uppercase tracking-widest text-xs mb-2">Admin</p>
+              <h1 class="text-4xl sm:text-5xl font-bold">Dashboard</h1>
+              <p class="text-coffee-100 mt-3 max-w-xl">A live summary of everything happening on CivicEvents+.</p>
+            </div>
+            <button type="button" id="refreshDashboard" class="bg-white text-coffee-900 font-semibold px-5 py-2.5 rounded-full shadow hover:bg-coffee-100">Refresh</button>
+          </div>
         </div>
         <div id="dashboardContent"></div>
       </section>

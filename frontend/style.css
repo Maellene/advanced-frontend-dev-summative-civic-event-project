@@ -1,5 +1,10 @@
 body {
   font-family: "Inter", system-ui, sans-serif;
+  background-color: #faf6f1;
+  background-image:
+    radial-gradient(circle at 10% 0%, rgba(207, 174, 136, 0.25), transparent 40%),
+    radial-gradient(circle at 100% 30%, rgba(163, 114, 74, 0.12), transparent 35%);
+  background-attachment: fixed;
 }
 
 h1, h2 {
@@ -15,6 +20,46 @@ input:not([type="checkbox"]):not([type="file"]), select, textarea {
 .page { display: none; }
 .page.active { display: block; }
 
+.hero {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(207, 174, 136, 0.45), transparent 45%),
+    linear-gradient(135deg, #3b2418 0%, #6f4730 100%);
+  box-shadow: 0 10px 30px rgba(59, 36, 24, 0.25);
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  right: -60px;
+  bottom: -80px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  border: 40px solid rgba(255, 255, 255, 0.07);
+}
+
+.hero h1 { color: #fff; }
+
+.chip {
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  border: 1px solid #d3c0a6;
+  background: #fff;
+  color: #573726;
+  font-size: 0.875rem;
+}
+
+.chip:hover { background: #f1e7da; }
+
+.chip.active {
+  background: #6f4730;
+  border-color: #6f4730;
+  color: #fff;
+}
+
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: 3px solid #a3724a;
   outline-offset: 2px;
@@ -25,8 +70,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 .grid article:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(59, 36, 24, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 14px 28px rgba(59, 36, 24, 0.22);
 }
 
 @media (prefers-reduced-motion: reduce) {

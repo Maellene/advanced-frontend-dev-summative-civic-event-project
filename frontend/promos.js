@@ -37,9 +37,9 @@ function promoCard(p) {
     '<h2 class="text-lg font-semibold">' + esc(p.title) + draft + "</h2>" +
     '<p class="text-sm mb-3">' + esc(shortText(p.description, 100)) + "</p>" +
     '<div class="mt-auto flex flex-wrap gap-2">' +
-    '<a href="#/promo/' + esc(p.id) + '" class="bg-blue-700 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-800">&#9654; Play</a>' +
-    '<a href="#/promo-form/' + esc(p.id) + '" class="admin-only bg-gray-200 px-3 py-1.5 rounded text-sm hover:bg-gray-300">Edit</a>' +
-    '<button type="button" data-id="' + esc(p.id) + '" data-action="' + action + '" class="promo-publish admin-only bg-gray-200 px-3 py-1.5 rounded text-sm hover:bg-gray-300">' +
+    '<a href="#/promo/' + esc(p.id) + '" class="bg-coffee-700 text-white px-3 py-1.5 rounded text-sm hover:bg-coffee-800">Play</a>' +
+    '<a href="#/promo-form/' + esc(p.id) + '" class="admin-only bg-stone-200 px-3 py-1.5 rounded text-sm hover:bg-stone-300">Edit</a>' +
+    '<button type="button" data-id="' + esc(p.id) + '" data-action="' + action + '" class="promo-publish admin-only bg-stone-200 px-3 py-1.5 rounded text-sm hover:bg-stone-300">' +
     (unpublished ? "Publish" : "Unpublish") + "</button>" +
     '<button type="button" data-id="' + esc(p.id) + '" class="delete-promo admin-only bg-red-700 text-white px-3 py-1.5 rounded text-sm hover:bg-red-800">Delete</button>' +
     "</div></div></article>";
@@ -51,7 +51,7 @@ function showPromos() {
   });
 
   if (list.length === 0) {
-    $("#promoList").html('<p class="col-span-full text-gray-700">No promos yet.</p>');
+    $("#promoList").html('<p class="col-span-full text-stone-700">No promos yet.</p>');
     return;
   }
   $("#promoList").html(list.map(promoCard).join(""));
@@ -89,10 +89,32 @@ $(document).on("click", ".delete-promo", function () {
     });
 });
 
-function captionTrackUrl(text) {
-  const clean = text.replace(/-->/g, "->").replace(/\n{2,}/g, "\n");
-  const vtt = "WEBVTT\n\n00:00:00.000 --> 10:00:00.000\n" + clean;
+function vttTime(seconds) {
+  function pad(n, size) { return String(n).padStart(size, "0"); }
+  const ms = Math.round(seconds * 1000);
+  return pad(Math.floor(ms / 3600000), 2) + ":" + pad(Math.floor(ms / 60000) % 60, 2) + ":" +
+    pad(Math.floor(ms / 1000) % 60, 2) + "." + pad(ms % 1000, 3);
+}
+
+// Caption text with timings (starts with WEBVTT) is used as it is.
+// Plain text: each line becomes one caption, spread evenly over the video length.
+function captionTrackUrl(text, duration) {
+  let vtt = text.trim();
+  if (vtt.indexOf("WEBVTT") !== 0) {
+    let lines = vtt.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+    if (lines.length === 1) lines = lines[0].split(/(?<=[.!?])\s+/);
+    const slot = duration / lines.length;
+    vtt = "WEBVTT\n\n" + lines.map(function (line, i) {
+      return vttTime(i * slot) + " --> " + vttTime((i + 1) * slot) + "\n" + line.replace(/-->/g, "->");
+    }).join("\n\n");
+  }
   return URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
+}
+
+function addCaptions(video, text) {
+  const track = $('<track kind="captions" srclang="en" label="English" />').attr("src", captionTrackUrl(text, video.duration || 60));
+  $(video).append(track);
+  track[0].track.mode = "showing";
 }
 
 function loadPromo(id) {
@@ -108,28 +130,29 @@ function loadPromo(id) {
 
 function renderPromo(p) {
   const url = mediaUrl(p.video_url);
-  const track = p.caption_text
-    ? '<track kind="captions" srclang="en" label="English" src="' + captionTrackUrl(p.caption_text) + '" default />'
-    : "";
-
   $("#promoDetail").html(
     '<article class="bg-white rounded shadow p-6">' +
     '<h1 class="text-2xl font-bold mb-3">' + esc(p.title) + "</h1>" +
     '<video id="promoVideo" controls preload="metadata" class="w-full max-h-[70vh] rounded bg-black mb-3">' +
-    '<source src="' + esc(url) + '" />' + track +
+    '<source src="' + esc(url) + '" />' +
     'Your browser cannot play this video. <a href="' + esc(url) + '">Download the video file</a>.</video>' +
     '<p class="whitespace-pre-line mb-4">' + esc(p.description) + "</p>" +
     (p.caption_text ? '<h2 class="text-lg font-semibold mb-1">Transcript</h2><p class="whitespace-pre-line mb-4">' + esc(p.caption_text) + "</p>" : "") +
     '<div class="flex gap-2">' +
-    '<a href="#/promo-form/' + esc(p.id) + '" class="admin-only bg-gray-200 px-3 py-1.5 rounded hover:bg-gray-300">Edit</a>' +
+    '<a href="#/promo-form/' + esc(p.id) + '" class="admin-only bg-stone-200 px-3 py-1.5 rounded hover:bg-stone-300">Edit</a>' +
     '<button type="button" data-id="' + esc(p.id) + '" class="delete-promo admin-only bg-red-700 text-white px-3 py-1.5 rounded hover:bg-red-800">Delete</button>' +
     "</div></article>"
   );
 
   const video = $("#promoVideo")[0];
-  if (video.textTracks.length) video.textTracks[0].mode = "showing";
+  if (p.caption_text) {
+    if (video.readyState >= 1) addCaptions(video, p.caption_text);
+    else $(video).one("loadedmetadata", function () { addCaptions(video, p.caption_text); });
+  }
   applyRoleVisibility();
 }
+
+$("#pf-caption").attr("placeholder", "One caption per line. The lines are spread evenly across the video.");
 
 function showPromoFormError(message) {
   $("#promoFormError").text(message).removeClass("hidden");

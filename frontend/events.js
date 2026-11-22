@@ -3,6 +3,7 @@ let allEvents = [];
 let eventPage = 1;
 let editingEventId = null;
 let registeredIds = [];
+let statusFilter = "active";
 
 pageLoaders["events"] = loadEvents;
 pageLoaders["event"] = loadEventDetail;
@@ -10,6 +11,8 @@ pageLoaders["event-form"] = setupEventForm;
 
 // Guard 2: the event form is an admin-only screen.
 ADMIN_PAGES.push("event-form");
+
+const PIN_ICON = '<svg class="inline w-4 h-4 -mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
 
 function eventImage(ev) {
   let meta = ev.metadata;
@@ -46,10 +49,26 @@ function loadMyRegisteredIds() {
 }
 
 function registerButton(ev) {
+  if (eventStatus(ev) === "ended") return "";
   if (registeredIds.indexOf(String(ev.id)) !== -1) {
     return '<button type="button" data-id="' + esc(ev.id) + '" class="card-cancel user-only bg-red-700 text-white px-3 py-1.5 rounded text-sm hover:bg-red-800">Cancel registration</button>';
   }
   return '<button type="button" data-id="' + esc(ev.id) + '" class="card-register user-only bg-green-800 text-white px-3 py-1.5 rounded text-sm hover:bg-green-900">Register</button>';
+}
+
+function eventStatus(ev) {
+  const now = new Date();
+  if (now > new Date(ev.ends_at)) return "ended";
+  if (now >= new Date(ev.starts_at)) return "now";
+  return "upcoming";
+}
+
+function setStatusFilter(status) {
+  statusFilter = status;
+  $("#statusChips .chip").each(function () {
+    const active = $(this).data("status") === status;
+    $(this).toggleClass("active", active).attr("aria-pressed", active);
+  });
 }
 
 function eventBadge(ev) {
@@ -69,7 +88,7 @@ function eventCard(ev, hideRegister) {
     '<div class="absolute inset-0 bg-gradient-to-t from-coffee-900 via-coffee-900/70 to-transparent"></div>' +
     '<span class="absolute top-3 left-3 bg-coffee-900/85 text-white text-sm font-semibold px-3 py-1 rounded-lg">' + esc(eventBadge(ev)) + "</span>" +
     '<div class="relative p-4">' +
-    '<p class="text-sm text-coffee-100 mb-1"><span aria-hidden="true">&#128205;</span> ' + esc(ev.location) + "</p>" +
+    '<p class="text-sm text-coffee-100 mb-1">' + PIN_ICON + ' ' + esc(ev.location) + "</p>" +
     '<h2 class="text-xl font-bold text-white mb-1" style="font-family: \'Playfair Display\', Georgia, serif;">' + esc(ev.title) + "</h2>" +
     '<p class="text-sm text-coffee-100 mb-1">' + esc(formatDate(ev.starts_at)) + "</p>" +
     '<p class="text-sm text-coffee-50 mb-3 line-clamp-2">' + esc(ev.description) + "</p>" +
@@ -98,6 +117,9 @@ function showEvents() {
     if (search && (ev.title + " " + (ev.description || "")).toLowerCase().indexOf(search) === -1) return false;
     if (place && String(ev.location || "").toLowerCase().indexOf(place) === -1) return false;
     if (date && new Date(ev.starts_at) < new Date(date + "T00:00:00")) return false;
+    const status = eventStatus(ev);
+    if (statusFilter === "active" && status === "ended") return false;
+    if (statusFilter !== "active" && statusFilter !== "all" && status !== statusFilter) return false;
     return true;
   });
 
@@ -106,10 +128,13 @@ function showEvents() {
   const start = (eventPage - 1) * EVENTS_PER_PAGE;
 
   if (list.length === 0) {
-    $("#eventList").html('<p class="col-span-full text-stone-700">No events found.</p>');
+    $("#eventList").html('<div class="col-span-full text-center bg-white rounded-2xl shadow p-10">' +
+      '<p class="text-lg font-semibold">No events found</p>' +
+      '<p class="text-stone-700">Try clearing the filters.</p></div>');
   } else {
     $("#eventList").html(list.slice(start, start + EVENTS_PER_PAGE).map(function (ev) { return eventCard(ev); }).join(""));
   }
+  $("#eventCount").text(list.length + (list.length === 1 ? " event" : " events"));
   showPager(pages);
   applyRoleVisibility();
 }
@@ -148,8 +173,15 @@ $("#filterForm").on("submit", function (e) {
   e.preventDefault();
 });
 
+$("#statusChips").on("click", ".chip", function () {
+  setStatusFilter($(this).data("status"));
+  eventPage = 1;
+  showEvents();
+});
+
 $("#clearFilters").on("click", function () {
   $("#filterForm")[0].reset();
+  setStatusFilter("active");
   $("#global-search").val("");
   eventPage = 1;
   showEvents();
@@ -167,6 +199,7 @@ $(window).on("hashchange", function () {
   if (location.hash === "#/login") {
     $("#filterForm")[0].reset();
     $("#global-search").val("");
+    setStatusFilter("active");
     eventPage = 1;
   }
 });

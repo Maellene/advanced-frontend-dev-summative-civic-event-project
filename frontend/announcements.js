@@ -39,12 +39,12 @@ function announcementCard(a) {
 
   return '<article class="bg-white rounded shadow p-4 flex flex-col">' +
     '<h2 class="text-lg font-semibold">' + esc(a.title) + draft + "</h2>" +
-    '<p class="text-sm text-gray-700">' + esc(formatDate(a.created_at)) + "</p>" +
-    '<p class="text-sm text-gray-700 mb-3">Length: <span class="audio-length" data-src="' + esc(mediaUrl(a.audio_url)) + '">' + length + "</span></p>" +
+    '<p class="text-sm text-stone-700">' + esc(formatDate(a.created_at)) + "</p>" +
+    '<p class="text-sm text-stone-700 mb-3">Length: <span class="audio-length" data-src="' + esc(mediaUrl(a.audio_url)) + '">' + length + "</span></p>" +
     '<div class="mt-auto flex flex-wrap gap-2">' +
-    '<a href="#/announcement/' + esc(a.id) + '" class="bg-blue-700 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-800">&#9654; Play</a>' +
-    '<a href="#/announcement-form/' + esc(a.id) + '" class="admin-only bg-gray-200 px-3 py-1.5 rounded text-sm hover:bg-gray-300">Edit</a>' +
-    '<button type="button" data-id="' + esc(a.id) + '" data-action="' + action + '" class="announcement-publish admin-only bg-gray-200 px-3 py-1.5 rounded text-sm hover:bg-gray-300">' +
+    '<a href="#/announcement/' + esc(a.id) + '" class="bg-coffee-700 text-white px-3 py-1.5 rounded text-sm hover:bg-coffee-800">Play</a>' +
+    '<a href="#/announcement-form/' + esc(a.id) + '" class="admin-only bg-stone-200 px-3 py-1.5 rounded text-sm hover:bg-stone-300">Edit</a>' +
+    '<button type="button" data-id="' + esc(a.id) + '" data-action="' + action + '" class="announcement-publish admin-only bg-stone-200 px-3 py-1.5 rounded text-sm hover:bg-stone-300">' +
     (unpublished ? "Publish" : "Unpublish") + "</button>" +
     '<button type="button" data-id="' + esc(a.id) + '" class="delete-announcement admin-only bg-red-700 text-white px-3 py-1.5 rounded text-sm hover:bg-red-800">Delete</button>' +
     "</div></article>";
@@ -56,7 +56,7 @@ function showAnnouncements() {
   });
 
   if (list.length === 0) {
-    $("#announcementList").html('<p class="col-span-full text-gray-700">No announcements yet.</p>');
+    $("#announcementList").html('<p class="col-span-full text-stone-700">No announcements yet.</p>');
     return;
   }
   $("#announcementList").html(list.map(announcementCard).join(""));
@@ -122,13 +122,13 @@ function renderAnnouncement(a) {
   $("#announcementDetail").html(
     '<article class="bg-white rounded shadow p-6">' +
     '<h1 class="text-2xl font-bold mb-1">' + esc(a.title) + "</h1>" +
-    '<p class="text-sm text-gray-700 mb-4">' + esc(formatDate(a.created_at)) + "</p>" +
+    '<p class="text-sm text-stone-700 mb-4">' + esc(formatDate(a.created_at)) + "</p>" +
     '<audio id="player" controls preload="metadata" class="w-full mb-2" aria-label="Audio for ' + esc(a.title) + '">' +
     '<source src="' + esc(url) + '" />' +
     'Your browser cannot play this audio. <a href="' + esc(url) + '">Download the audio file</a>.</audio>' +
     '<p class="text-sm mb-4">Length: <span id="audioLength">' + (a.duration_seconds ? formatDuration(a.duration_seconds) : "...") + "</span></p>" +
     '<div class="flex gap-2">' +
-    '<a href="#/announcement-form/' + esc(a.id) + '" class="admin-only bg-gray-200 px-3 py-1.5 rounded hover:bg-gray-300">Edit</a>' +
+    '<a href="#/announcement-form/' + esc(a.id) + '" class="admin-only bg-stone-200 px-3 py-1.5 rounded hover:bg-stone-300">Edit</a>' +
     '<button type="button" data-id="' + esc(a.id) + '" class="delete-announcement admin-only bg-red-700 text-white px-3 py-1.5 rounded hover:bg-red-800">Delete</button>' +
     "</div></article>"
   );

@@ -38,6 +38,28 @@ function loadDashboard() {
     });
 }
 
+function statIcon(paths) {
+  return '<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths + "</svg>";
+}
+
+const STAT_GROUPS = [
+  { title: "People", match: /user/i, icon: statIcon('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 3-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c2.2.7 3.5 2.6 3.5 5.5"/>') },
+  { title: "Events", match: /event/i, icon: statIcon('<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>') },
+  { title: "Participation", match: /registration|feedback/i, icon: statIcon('<path d="M20 12a8 8 0 0 1-11.5 7.2L4 20l1-4.2A8 8 0 1 1 20 12z"/>') },
+  { title: "Content and notifications", match: /./, icon: statIcon('<path d="M4 10v4h3l7 4V6L7 10H4z"/><path d="M17.5 9a4 4 0 0 1 0 6"/>') },
+];
+
+function statGroupIndex(name) {
+  return STAT_GROUPS.findIndex(function (g) { return g.match.test(name); });
+}
+
+function statCard(stat, icon) {
+  return '<div class="bg-white rounded-2xl shadow p-5 flex items-center justify-between gap-3">' +
+    '<div><p class="text-sm text-stone-700">' + esc(statLabel(stat[0])) + '</p>' +
+    '<p class="text-4xl font-bold text-coffee-900">' + esc(stat[1]) + "</p></div>" +
+    '<span class="shrink-0 w-12 h-12 rounded-full bg-coffee-100 text-coffee-700 flex items-center justify-center">' + icon + "</span></div>";
+}
+
 function renderDashboard(data) {
   const stats = collectStats(data, "", []);
   if (!stats.some(function (s) { return /unread/i.test(s[0]); })) {
@@ -46,19 +68,21 @@ function renderDashboard(data) {
 
   const max = Math.max.apply(null, stats.map(function (s) { return s[1]; }).concat(1));
 
-  let html = '<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">';
-  stats.forEach(function (s) {
-    html += '<div class="bg-white rounded shadow p-5 border-l-4 border-coffee-600"><p class="text-sm text-stone-700">' + esc(statLabel(s[0])) +
-      '</p><p class="text-3xl font-bold text-coffee-900">' + esc(s[1]) + "</p></div>";
+  let html = "";
+  STAT_GROUPS.forEach(function (group, index) {
+    const items = stats.filter(function (s) { return statGroupIndex(s[0]) === index; });
+    if (items.length === 0) return;
+    html += '<section class="mb-6" aria-label="' + esc(group.title) + '"><h2 class="text-xl font-semibold mb-3">' + esc(group.title) + "</h2>" +
+      '<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">' +
+      items.map(function (s) { return statCard(s, group.icon); }).join("") + "</div></section>";
   });
-  html += "</div>";
 
-  html += '<section class="bg-white rounded shadow p-5" aria-labelledby="chartTitle"><h2 id="chartTitle" class="text-xl font-semibold mb-3">Overview chart</h2><ul class="space-y-3">';
+  html += '<section class="bg-white rounded-2xl shadow p-6" aria-labelledby="chartTitle"><h2 id="chartTitle" class="text-xl font-semibold mb-4">Overview chart</h2><ul class="space-y-4">';
   stats.forEach(function (s) {
     const width = s[1] > 0 ? Math.max(2, Math.round((s[1] / max) * 100)) : 0;
     html += '<li><div class="flex justify-between text-sm mb-1"><span>' + esc(statLabel(s[0])) +
       '</span><span class="font-semibold">' + esc(s[1]) + '</span></div>' +
-      '<div class="h-3 bg-stone-200 rounded"><div class="h-3 bg-coffee-700 rounded" style="width:' + width + '%"></div></div></li>';
+      '<div class="h-3 bg-coffee-100 rounded-full overflow-hidden"><div class="h-3 rounded-full bg-gradient-to-r from-coffee-400 to-coffee-800" style="width:' + width + '%"></div></div></li>';
   });
   html += "</ul></section>";
 
